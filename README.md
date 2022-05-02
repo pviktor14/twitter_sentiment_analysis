@@ -9,5 +9,6 @@ After the data collected it was necessary to implement a data preparation phase,
 
 The goal of the project is to determine what is the satisfactory level of a certain product based on tweets. So I had to make text sentiment analysis. Through that I rated the tweet of a particular user from -1 - +1 (-1: negative, 0: neutral, +1: positive), than I summed up each user's opinion. After that I classified the users and proceed with other analysis which included geospatial analysis (to see which region of the world is more positive). I also aimed to determine the loyality of the users in specific regions.
 
-## Sources
 I provide a Jupyter Notebook to explain each step of the project with outputs to represent my findings, but I also include the source codes.
+
+## Sources
