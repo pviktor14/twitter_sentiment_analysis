@@ -1,7 +1,5 @@
-import os
 import pandas as pd
 import tweepy as tw
-import numpy as np
 import requests
 import urllib
 import time
@@ -18,8 +16,8 @@ class twitterDataCollection:
         This method initialize the twitter api with the given keys
         Returns API
         '''
-        auth = tw.OAuthHandler(keys['consumer_key'], keys['consumer_secret'])
-        auth.set_access_token(keys['access_token'], keys['access_token_secret'])
+        auth = tw.OAuthHandler(self.keys['consumer_key'], self.keys['consumer_secret'])
+        auth.set_access_token(self.keys['access_token'], self.keys['access_token_secret'])
         api = tw.API(auth, wait_on_rate_limit=True)
         return api
 
@@ -48,7 +46,6 @@ class twitterDataCollection:
                 'screen_name':     item.user.screen_name,
                 'retweet_count':   item.retweet_count,
                 'text':            item.full_text,
-                'created_at':      item.created_at,
                 'favourite_count': item.favorite_count,
                 'hashtags':        item.entities['hashtags'],
                 'status_count':    item.user.statuses_count,
@@ -93,9 +90,9 @@ class dataPrep:
         else:
             return ('-1')
 
-    def dataWrangling(self, savefile=True, save_location='geocoded_export/'):
+    def dataWrangling(self, dropCols = [], geocode = True, savefile=True, save_location='export/'):
         '''
-        This method geocodes the location information of the dataframe
+        This method geocodes the location information of the dataframe and process/drops other columns
         If no location is given the value is empty, therefore first it drops these rows.
         The process could take up to 20 mins.
         Returns geocoded dataframe
@@ -104,22 +101,35 @@ class dataPrep:
         self.dataframe = df
         df.replace("", float("NaN"), inplace=True) # replace empty values with NaN value
         df.dropna(subset=['location'], inplace=True) # drop rows where location is NaN
-        df.reset_index(drop=True, inplace=True) # Reset indexing in the dataframe
+
         # Geocoding
-        print(f"Geocoding {df.shape[0]} values. Please stand by...")
-        df['geocoded_loc'] = df['location'].apply(self.geocode) # Geocoding data
+        if geocode:
+            print(f"Geocoding {df.shape[0]} values. Please stand by...")
+            df['geocoded_loc'] = df['location'].apply(self.geocode) # Geocoding data
+        else:
+            print("Geocoding off")
 
         # Drop -1 values of geocoded_loc
+        df.drop(df[df['geocoded_loc']=='-1'].index, inplace=True)
+        # Process creation_time column
+        df['date'] = [d.date() for d in df['creation_time']]
+        df['time'] = [d.time() for d in df['creation_time']]
+
+        # Drop columns we don't need for further analysis
+        if dropCols:
+            df.drop(dropCols, axis=1, inplace=True)
+        else:
+            df.drop(['creation_time'], axis=1, inplace=True)
+
+        df.reset_index(drop=True, inplace=True) # Reset indexing in the dataframe
         
-
-        # Process time column
-
         # Save processed file to json
         if savefile:
             if not os.path.exists(save_location):
                 os.mkdir(save_location)
             df.to_json(f'{save_location}/processed_data.json', orient='columns', indent=2)
             print(f'Geocoded file saved to {save_location}/processed_data.json')
+
         # Measure processing time for processing
         print(f'Elapsed time: {(time.time()-start_time):.2f} sec')
         return df
@@ -132,11 +142,16 @@ class dataAnalysis:
         '''
         displays graphs of location distribution, retweet count, time, device
         '''
+        self.dataframe = df
+        # Visualize spatial distribution of the tweets on map
+
+        # Visualize source devices distribution
+
+        # Visualize retweets
         pass
 
     def twitterSentimentAnalysis(self):
         pass
-
 
 # data visualisation >> plotly dashboard/tableu dashboard
 
@@ -161,10 +176,14 @@ if __name__ == '__main__':
     df = object.collectTweets()
 
     # Export tweets into JSON file
-    object.exportTweetsToJSON(df, save_location='json_export/', filename='twitter_data', format='JSON')
-    '''
-    df = pd.read_json(r'json_export//twitter_data.json')
-    print(df)
+    object.exportTweetsToJSON(df, save_location='export/', filename='twitter_original_data', format='JSON')
+
+    # Data wrangling and geocoding
     twitter_wrangling = dataPrep(df)
-    df2 = twitter_wrangling.dataWrangling()
-    print(df2)
+    df2 = twitter_wrangling.dataWrangling(dropCols=['creation_time', 'hashtags', 'status_count', 'name', 'screen_name'], geocode=False)
+    '''
+    df = pd.read_json('geocoded_export/processed_data.json')
+    print(df)
+    # Analyse processed data
+    tweet_analysis = dataAnalysis(df)
+    tweet_analysis.twitterEDA()
