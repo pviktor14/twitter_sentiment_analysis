@@ -12,7 +12,7 @@ The goal of the project is to determine what is the satisfactory level of a cert
 I provide a Jupyter Notebook to explain each step of the project with outputs to represent my findings, but I also include the source codes.
 
 ## TODO
-###Code:
+### Code:
     EDA, --> scattermapbox
     NLP
 
