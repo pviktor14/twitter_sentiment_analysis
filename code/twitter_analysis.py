@@ -1,3 +1,4 @@
+import os
 import pandas as pd
 import tweepy as tw
 import requests
@@ -98,57 +99,142 @@ class dataPrep:
         Returns geocoded dataframe
         '''
         start_time = time.time()
-        self.dataframe = df
-        df.replace("", float("NaN"), inplace=True) # replace empty values with NaN value
-        df.dropna(subset=['location'], inplace=True) # drop rows where location is NaN
+        wranglingDF = self.dataframe
+        wranglingDF.replace("", float("NaN"), inplace=True) # replace empty values with NaN value
+        wranglingDF.dropna(subset=['location'], inplace=True) # drop rows where location is NaN
 
         # Geocoding
         if geocode:
-            print(f"Geocoding {df.shape[0]} values. Please stand by...")
-            df['geocoded_loc'] = df['location'].apply(self.geocode) # Geocoding data
+            print(f"Geocoding {wranglingDF.shape[0]} values. Please stand by...")
+            wranglingDF['geocoded_loc'] = wranglingDF['location'].apply(self.geocode) # Geocoding data
         else:
             print("Geocoding off")
 
         # Drop -1 values of geocoded_loc
-        df.drop(df[df['geocoded_loc']=='-1'].index, inplace=True)
+        wranglingDF.drop(wranglingDF[wranglingDF['geocoded_loc']=='-1'].index, inplace=True)
         # Process creation_time column
-        df['date'] = [d.date() for d in df['creation_time']]
-        df['time'] = [d.time() for d in df['creation_time']]
+        wranglingDF['date'] = [d.date() for d in wranglingDF['creation_time']]
+        wranglingDF['time'] = [d.time() for d in wranglingDF['creation_time']]
 
         # Drop columns we don't need for further analysis
         if dropCols:
-            df.drop(dropCols, axis=1, inplace=True)
+            wranglingDF.drop(dropCols, axis=1, inplace=True)
         else:
-            df.drop(['creation_time'], axis=1, inplace=True)
+            wranglingDF.drop(['creation_time'], axis=1, inplace=True)
 
-        df.reset_index(drop=True, inplace=True) # Reset indexing in the dataframe
+        wranglingDF.reset_index(drop=True, inplace=True) # Reset indexing in the dataframe
         
         # Save processed file to json
         if savefile:
             if not os.path.exists(save_location):
                 os.mkdir(save_location)
-            df.to_json(f'{save_location}/processed_data.json', orient='columns', indent=2)
+            wranglingDF.to_json(f'{save_location}/processed_data.json', orient='columns', indent=2)
             print(f'Geocoded file saved to {save_location}/processed_data.json')
 
         # Measure processing time for processing
         print(f'Elapsed time: {(time.time()-start_time):.2f} sec')
-        return df
+        return wranglingDF
 
 class dataAnalysis:
     def __init__(self, dataframe):
         self.dataframe = dataframe
 
-    def twitterEDA(self):
+    def twitterEDA(self, keyword, showFigure = True, saveFigure = False, savePath = 'export/'):
         '''
-        displays graphs of location distribution, retweet count, time, device
+        displays graphs of location distribution, tweet count, time, device
         '''
-        self.dataframe = df
-        # Visualize spatial distribution of the tweets on map
+        edaDF = self.dataframe
 
-        # Visualize source devices distribution
+        # Import necessary libraries to make visualizations
+        import plotly.graph_objects as go
+        from plotly.subplots import make_subplots
 
-        # Visualize retweets
-        pass
+        lat = [edaDF['geocoded_loc'][i][0] for i in range(edaDF['geocoded_loc'].shape[0])]
+        lon = [edaDF['geocoded_loc'][i][1] for i in range(edaDF['geocoded_loc'].shape[0])]
+
+        # Config subplots
+        fig = make_subplots(
+            rows = 2, cols = 2,
+            column_widths = [0.7, 0.3],
+            row_heights = [0.5, 0.5],
+            specs = [
+                [{"type":"scattergeo", "rowspan":2}, {"type":"bar"}],
+                [               None               , {"type":"scatter"}]
+            ]
+        )
+
+        # Add map trace with scatterplot
+        fig.add_trace(
+            go.Scattergeo(
+                lat = lat,
+                lon = lon,
+                mode = "markers",
+                hoverinfo = "text",
+                #showlegend = False,
+                marker = dict(
+                    color = "crimson",
+                    size = 4,
+                    opacity = 0.8
+                )
+            ),
+            row = 1, col = 1
+        )
+        # Config map
+        fig.update_geos(
+            projection_type = "mercator",
+            showcoastlines = True,
+            showcountries=True,
+            showland = True, #landcolor = "rgb(212, 212, 212)",
+            showocean = True, oceancolor = "white",
+            showlakes = True, #lakecolor = "LightGray",
+            showrivers = True, #rivercolor = "LightGray",
+            framecolor = "white",
+            uirevision = True
+        )
+
+        # Config layout
+        fig.update_layout(
+            #template="plotly_dark",
+            mapbox_style="open-street-map",
+            margin=dict(r=0, t=30, b=0, l=0),
+            title=f'Tweets with {keyword} hashtag',
+            showlegend = False,
+            dragmode = 'pan'
+        )
+
+        # Add scatterplot with line of tweet count vs time
+        fig.add_trace(
+            go.Scatter(
+                x = edaDF['date'].unique(),
+                y = edaDF['date'].value_counts(),
+                marker = dict(color="crimson"),
+                showlegend = False
+            ),
+            row = 1, col = 2
+        )
+
+        # Add bar plot of source devices
+        fig.add_trace(
+            go.Bar(
+                x = edaDF['source_device'].unique()[:10],
+                y = edaDF['source_device'].value_counts(),
+                marker = dict(color="crimson"),
+                showlegend = False
+            ),
+            row = 2, col = 2
+        )
+
+        if saveFigure:
+            if not os.path.exists(savePath):
+                os.mkdir(savePath)
+            fig.write_html(os.path.join(savePath, 'eda_export.html'))
+            fig.write_image(os.path.join(savePath, 'eda_export.png'))
+            print(f'Figure saved to: {savePath}')
+        
+        if showFigure:
+            fig.show()
+
+        return fig
 
     def twitterSentimentAnalysis(self):
         pass
@@ -166,9 +252,10 @@ if __name__ == '__main__':
     }
 
     # Init data collection
+    searchHashtags = '#mcdonalds'
     object = twitterDataCollection(
         keys,
-        searchTerm='#mcdonalds',
+        searchTerm=searchHashtags,
         tweetCount=100,
         sinceDate='2022-05-01'
     )
@@ -180,10 +267,14 @@ if __name__ == '__main__':
 
     # Data wrangling and geocoding
     twitter_wrangling = dataPrep(df)
-    df2 = twitter_wrangling.dataWrangling(dropCols=['creation_time', 'hashtags', 'status_count', 'name', 'screen_name'], geocode=False)
+    df2 = twitter_wrangling.dataWrangling(dropCols=['creation_time', 'hashtags', 'status_count', 'name', 'screen_name'], geocode=True)
+
+    # Analyse processed data
+    tweet_analysis = dataAnalysis(df2)
+    tweet_analysis.twitterEDA(searchHashtags, showFigure=True,savePath='export/', saveFigure=True)
     '''
     df = pd.read_json('geocoded_export/processed_data.json')
-    print(df)
-    # Analyse processed data
     tweet_analysis = dataAnalysis(df)
-    tweet_analysis.twitterEDA()
+    tweet_analysis.twitterSentimentAnalysis()
+
+
