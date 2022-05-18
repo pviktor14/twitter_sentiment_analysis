@@ -3,7 +3,7 @@
 This project showcase a method that can be used to measure the customer satisfaction towards a brand, event or service.
 
 ## Project overview
-The data is collected via Twitter RESTAPI and python library tweepy. The collected tweets saved to pandas dataframe and json file.
+The data is collected via Twitter API and python library tweepy. The collected tweets saved to pandas dataframe and json file.
 
 After the data collected it was necessary to implement a data preparation phase, because of the various data formats and the location data needed to be geocoded to longitude and latitude data do geospatial analysis as well.
 
