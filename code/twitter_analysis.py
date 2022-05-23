@@ -1,4 +1,5 @@
 import os
+import re
 import pandas as pd
 import tweepy as tw
 import requests
@@ -123,6 +124,9 @@ class dataPrep:
             wranglingDF.drop(['creation_time'], axis=1, inplace=True)
 
         wranglingDF.reset_index(drop=True, inplace=True) # Reset indexing in the dataframe
+
+        for i in range(len(wranglingDF['text'])):
+            wranglingDF['text'][i] = ' '.join(re.sub("(@[A-Za-z0-9]+)|([^0-9A-Za-z \t])|(\w+:\/\/\S+)", " ", wranglingDF['text'][i]).split())
         
         # Save processed file to json
         if savefile:
@@ -158,8 +162,8 @@ class dataAnalysis:
             column_widths = [0.7, 0.3],
             row_heights = [0.5, 0.5],
             specs = [
-                [{"type":"scattergeo", "rowspan":2}, {"type":"bar"}],
-                [               None               , {"type":"scatter"}]
+                [{"type":"scattergeo", "rowspan":2}, {"type":"scatter"}],
+                [               None               , {"type":"bar"}]
             ]
         )
 
@@ -194,7 +198,6 @@ class dataAnalysis:
 
         # Config layout
         fig.update_layout(
-            #template="plotly_dark",
             mapbox_style="open-street-map",
             margin=dict(r=0, t=30, b=0, l=0),
             title=f'Tweets with {keyword} hashtag',
@@ -236,13 +239,35 @@ class dataAnalysis:
 
         return fig
 
-    def twitterSentimentAnalysis(self):
-        pass
+    def twitterSentimentAnalysis(self, saveFile = False, savePath = 'export/'):
+        from textblob import TextBlob
+        sentimentDF = self.dataframe
+        sentiments = []
+        
+        for i in range(len(sentimentDF['text'])):
+            tweet = sentimentDF['text'][i]
+            analysis = TextBlob(tweet)
+            if analysis.sentiment.polarity > 0:
+                sentiments.append('Positive')
+            elif analysis.sentiment.polarity == 0:
+                sentiments.append('Neutral')
+            else:
+                sentiments.append('Negative')
+        sentimentDF['sentiment'] = sentiments
+
+        # Save processed dataframe to json
+        if saveFile:
+            if not os.path.exists(savePath):
+                os.mkdir(savePath)
+            sentimentDF.to_json(f'{savePath}/processed_SA_data.json', orient='columns', indent=2)
+            print(f'Geocoded file saved to {savePath}/processed_SA_data.json')
+
+        return sentimentDF
 
 # data visualisation >> plotly dashboard/tableu dashboard
 
 if __name__ == '__main__':
-    '''
+    
     # Acces keys
     keys = {
         'consumer_key' : 'tw6NVxVJ1z0RYQLxy7mnOyGSN',
@@ -253,6 +278,7 @@ if __name__ == '__main__':
 
     # Init data collection
     searchHashtags = '#mcdonalds'
+    '''
     object = twitterDataCollection(
         keys,
         searchTerm=searchHashtags,
@@ -264,17 +290,18 @@ if __name__ == '__main__':
 
     # Export tweets into JSON file
     object.exportTweetsToJSON(df, save_location='export/', filename='twitter_original_data', format='JSON')
-
+    '''
+    df = pd.read_json('../data/geocoded_data.json')
     # Data wrangling and geocoding
     twitter_wrangling = dataPrep(df)
-    df2 = twitter_wrangling.dataWrangling(dropCols=['creation_time', 'hashtags', 'status_count', 'name', 'screen_name'], geocode=True)
+    df2 = twitter_wrangling.dataWrangling(dropCols=['creation_time', 'hashtags', 'status_count', 'name', 'screen_name'], geocode=False)
 
     # Analyse processed data
     tweet_analysis = dataAnalysis(df2)
-    tweet_analysis.twitterEDA(searchHashtags, showFigure=True,savePath='export/', saveFigure=True)
-    '''
-    df = pd.read_json('geocoded_export/processed_data.json')
-    tweet_analysis = dataAnalysis(df)
-    tweet_analysis.twitterSentimentAnalysis()
+    #tweet_analysis.twitterEDA(searchHashtags, showFigure=True,savePath='export/', saveFigure=True)
+    
+    df_analysed = tweet_analysis.twitterSentimentAnalysis()
+
+    print(df_analysed.head())
 
 
