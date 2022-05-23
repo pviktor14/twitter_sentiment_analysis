@@ -5,6 +5,9 @@ import tweepy as tw
 import requests
 import urllib
 import time
+from textblob import TextBlob
+import plotly.graph_objects as go
+from plotly.subplots import make_subplots
 
 class twitterDataCollection:
     def __init__(self, keys, searchTerm, tweetCount, sinceDate):
@@ -149,10 +152,6 @@ class dataAnalysis:
         '''
         edaDF = self.dataframe
 
-        # Import necessary libraries to make visualizations
-        import plotly.graph_objects as go
-        from plotly.subplots import make_subplots
-
         lat = [edaDF['geocoded_loc'][i][0] for i in range(edaDF['geocoded_loc'].shape[0])]
         lon = [edaDF['geocoded_loc'][i][1] for i in range(edaDF['geocoded_loc'].shape[0])]
 
@@ -240,10 +239,9 @@ class dataAnalysis:
         return fig
 
     def twitterSentimentAnalysis(self, saveFile = False, savePath = 'export/'):
-        from textblob import TextBlob
         sentimentDF = self.dataframe
         sentiments = []
-        
+
         for i in range(len(sentimentDF['text'])):
             tweet = sentimentDF['text'][i]
             analysis = TextBlob(tweet)
@@ -263,6 +261,14 @@ class dataAnalysis:
             print(f'Geocoded file saved to {savePath}/processed_SA_data.json')
 
         return sentimentDF
+    
+    def getStatisticalData(self):
+        '''
+        Pos/Neg/Neu ratio
+        geo location vs pos/neg/neu
+        time vs sentiment
+        '''
+        pass
 
 # data visualisation >> plotly dashboard/tableu dashboard
 
