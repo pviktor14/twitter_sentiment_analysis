@@ -276,15 +276,14 @@ if __name__ == '__main__':
     
     # Acces keys
     keys = {
-        'consumer_key' : 'tw6NVxVJ1z0RYQLxy7mnOyGSN',
-        'consumer_secret' : 'teR9ivG8yybmgpSlsjGXzrb3bFDHcwsVGK56CJZoxf1YSfKTFx',
-        'access_token' : '4643374648-8BZhoJc9jIL0QEfbQ2niswvXlOIUrQyoxxP6UhM',
-        'access_token_secret' : '1lZcdkU4svzYNhFJWdyXxMOV2Kv13jEGAF0QmigGy6VX7'
+        'consumer_key' : '',
+        'consumer_secret' : '',
+        'access_token' : '',
+        'access_token_secret' : ''
     }
 
     # Init data collection
     searchHashtags = '#mcdonalds'
-    '''
     object = twitterDataCollection(
         keys,
         searchTerm=searchHashtags,
@@ -296,15 +295,14 @@ if __name__ == '__main__':
 
     # Export tweets into JSON file
     object.exportTweetsToJSON(df, save_location='export/', filename='twitter_original_data', format='JSON')
-    '''
-    df = pd.read_json('../data/geocoded_data.json')
+    
     # Data wrangling and geocoding
     twitter_wrangling = dataPrep(df)
     df2 = twitter_wrangling.dataWrangling(dropCols=['creation_time', 'hashtags', 'status_count', 'name', 'screen_name'], geocode=False)
 
     # Analyse processed data
     tweet_analysis = dataAnalysis(df2)
-    #tweet_analysis.twitterEDA(searchHashtags, showFigure=True,savePath='export/', saveFigure=True)
+    tweet_analysis.twitterEDA(searchHashtags, showFigure=True,savePath='export/', saveFigure=True)
     
     df_analysed = tweet_analysis.twitterSentimentAnalysis()
 
